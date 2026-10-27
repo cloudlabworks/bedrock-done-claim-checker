@@ -54,6 +54,6 @@ What the live run found, both fixed:
 
 Offline: `cfn-lint` clean, 11 unit tests pass (`python3 -m unittest discover -s tests`). This is a small two-claim smoke test, not an accuracy benchmark.
 
-Independent project by Cloud Lab Works; not affiliated with or endorsed by AWS.
+Independent project by CloudLab Works; not affiliated with or endorsed by AWS.
 
 MIT licensed.
