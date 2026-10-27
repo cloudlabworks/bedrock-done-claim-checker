@@ -39,8 +39,20 @@ flowchart LR
 Defaults: `us-east-1`, `amazon.nova-micro-v1:0`, 100 model calls per day.
 
 ## Status
-Offline checks only so far: `cfn-lint` clean and 10 unit tests pass (`python3 -m unittest discover -s tests`).
-Not yet run against a live AWS account.
+First live run 2026-10-27 (us-east-1, `amazon.nova-micro-v1:0`, private IAM-auth URL; run from CloudShell, no access keys):
+
+| Check | Result |
+|---|---|
+| Unsigned request to the function URL | 403 |
+| Weak claim (no artifacts in evidence) | `unsupported` |
+| Strong claim (hash, test output, timestamp) | `partial` on the first run, then `supported` after a fix (below) |
+| Daily counter after the run | 5, matching the 5 model calls made |
+
+What the live run found, both fixed:
+1. **New AWS accounts can't pin Lambda concurrency.** Their total limit is 10, and Lambda keeps all 10 unreserved, so `ReservedConcurrentExecutions: 1` failed the stack. Pinning is now an opt-in parameter (`ReservedConcurrency`, default 0); the daily cap still bounds spend.
+2. **The deterministic word check was too literal.** It flagged "deployed" and "tests" as missing from evidence that said "deploy" and "pytest", and downgraded a claim the model had right. Claim words are now stemmed, with a regression test.
+
+Offline: `cfn-lint` clean, 11 unit tests pass (`python3 -m unittest discover -s tests`). This is a small two-claim smoke test, not an accuracy benchmark.
 
 Independent project by Cloud Lab Works; not affiliated with or endorsed by AWS.
 
