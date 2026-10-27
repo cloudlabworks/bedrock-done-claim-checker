@@ -83,6 +83,11 @@ class Tests(unittest.TestCase):
         s, b, *_ = run("deploy pytest passed", EVID, reply="Here you go:\n" + GOOD + "\nThanks")
         self.assertEqual(b["verdict"], "supported")
 
+    def test_word_variants_count_as_present(self):
+        # live run 2026-10-27: "deployed ... tests" vs evidence "deploy ... pytest" was flagged as missing terms
+        s, b, *_ = run("deployed the stack, tests pass", EVID)
+        self.assertEqual((b["verdict"], b["checks"]), ("supported", []))
+
     def test_missing_list_capped(self):
         many = json.dumps({"verdict": "partial", "missing": [str(i) for i in range(30)], "reason": "x"})
         self.assertEqual(len(run("deploy pytest passed", EVID, reply=many)[1]["missing"]), 10)

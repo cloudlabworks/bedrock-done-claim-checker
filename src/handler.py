@@ -33,6 +33,15 @@ STOP = set("the a an and or to of in on for is was are be been it this that with
            "complete completed finished successfully all now has have".split())
 
 
+def _stem(word):
+    """Crude suffix strip so 'deployed' matches 'deploy' and 'tests' matches 'pytest'. Found on the first live
+    run (2026-10-27): without it the check downgraded a well-evidenced claim that the model had right."""
+    for suf in ("ing", "ed", "es", "s"):
+        if word.endswith(suf) and len(word) - len(suf) >= 4:
+            return word[: -len(suf)]
+    return word
+
+
 def deterministic_checks(claim, evidence):
     """Checks that need no model. Returns (blocking_problem or None, notes list, artifacts list)."""
     notes = []
@@ -43,7 +52,7 @@ def deterministic_checks(claim, evidence):
         notes.append("evidence contains no concrete artifact (hash, URL, timestamp, command output, number)")
     claim_words = {w for w in re.findall(r"[a-z][a-z0-9_-]{2,}", claim.lower()) if w not in STOP}
     ev = evidence.lower()
-    missing = sorted(w for w in claim_words if w not in ev)
+    missing = sorted(w for w in claim_words if _stem(w) not in ev)
     if claim_words and len(missing) / len(claim_words) > 0.6:
         notes.append("most claim terms never appear in the evidence: " + ", ".join(missing[:8]))
     return None, notes, artifacts
