@@ -9,7 +9,7 @@ STACK="${STACK_NAME:-bedrock-harness-demo}"
 echo "== deploying stack $STACK in $AWS_REGION"
 aws cloudformation deploy --stack-name "$STACK" --template-file bedrock-harness-demo.yaml \
   --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset \
-  --parameter-overrides ModelId="${MODEL_ID:-amazon.nova-micro-v1:0}" DailyCap="${DAILY_CAP:-100}" UrlAuthType="${URL_AUTH:-AWS_IAM}" || exit 1
+  --parameter-overrides ModelId="${MODEL_ID:-amazon.nova-micro-v1:0}" DailyCap="${DAILY_CAP:-100}" UrlAuthType="${URL_AUTH:-AWS_IAM}" ReservedConcurrency="${RESERVED_CONCURRENCY:-0}" || exit 1
 FN=$(stack_output "$STACK" FunctionName)
 echo "== packaging src/handler.py -> build/checker.zip (as index.py)"
 rm -rf build && mkdir -p build && cp src/handler.py build/index.py && (cd build && python3 -m zipfile -c checker.zip index.py) || exit 1

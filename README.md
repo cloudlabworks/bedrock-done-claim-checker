@@ -11,14 +11,14 @@ Send a claim that some work is done plus the evidence for it; get back `supporte
 | One model, chosen at deploy time; no routing between models | `ModelId` parameter |
 | Model output accepted only in the exact JSON shape; anything else is `unparseable` | `parse_model_reply` |
 | A "supported" from the model is downgraded to `partial` when the checks flagged something | `check` |
-| Concurrency pinned to 1; IAM role can invoke exactly one model | `bedrock-harness-demo.yaml` |
+| Concurrency pinnable (`ReservedConcurrency`, off by default: new AWS accounts allow only 10 concurrent executions and keep all 10 unreserved); IAM role can invoke exactly one model | `bedrock-harness-demo.yaml` |
 | Function URL private (IAM auth) by default | `UrlAuthType` |
 
 ## Flow
 ```mermaid
 flowchart LR
   C["Caller<br/>claim + evidence"] --> U["Function URL<br/>IAM auth (private)"]
-  U --> L["Lambda<br/>concurrency 1"]
+  U --> L["Lambda<br/>concurrency pinnable"]
   L --> D{"Deterministic checks<br/>evidence? artifacts?<br/>claim terms covered?"}
   D -->|no evidence| X["unsupported<br/>model never called"]
   D --> B{"Daily cap<br/>DynamoDB counter"}

@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
   Done-claim checker: one Lambda, one Bedrock model, and a harness around it. A DynamoDB
-  counter caps calls per day before Bedrock is ever called, concurrency is pinned to 1,
+  counter caps calls per day before Bedrock is ever called, concurrency can be pinned (ReservedConcurrency) where the account allows it,
   and the function URL requires IAM auth (private) until it is deliberately opened.
 
 Parameters:
@@ -15,6 +15,15 @@ Parameters:
     MinValue: 1
     MaxValue: 1000
     Description: Model calls allowed per UTC day; past this the function answers 429 without calling Bedrock.
+  ReservedConcurrency:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    MaxValue: 10
+    Description: >-
+      Pin the function's concurrency (e.g. 1). 0 leaves it unreserved. New AWS accounts have a total
+      Lambda concurrency limit of 10, and Lambda refuses any reservation that leaves fewer than 10
+      unreserved, so pinning fails there until the limit is raised. The daily cap still bounds spend.
   UrlAuthType:
     Type: String
     Default: AWS_IAM
@@ -23,6 +32,7 @@ Parameters:
 
 Conditions:
   IsPublic: !Equals [!Ref UrlAuthType, NONE]
+  PinConcurrency: !Not [!Equals [!Ref ReservedConcurrency, 0]]
 
 Resources:
   BudgetTable:
@@ -85,7 +95,7 @@ Resources:
       Role: !GetAtt FunctionRole.Arn
       Timeout: 30
       MemorySize: 256
-      ReservedConcurrentExecutions: 1
+      ReservedConcurrentExecutions: !If [PinConcurrency, !Ref ReservedConcurrency, !Ref AWS::NoValue]
       Environment:
         Variables:
           MODEL_ID: !Ref ModelId
