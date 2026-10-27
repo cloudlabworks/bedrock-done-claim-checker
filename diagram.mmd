@@ -1,0 +1,11 @@
+flowchart LR
+  C["Caller<br/>claim + evidence"] --> U["Function URL<br/>IAM auth (private)"]
+  U --> L["Lambda<br/>concurrency 1"]
+  L --> D{"Deterministic checks<br/>evidence? artifacts?<br/>claim terms covered?"}
+  D -->|no evidence| X["unsupported<br/>model never called"]
+  D --> B{"Daily cap<br/>DynamoDB counter"}
+  B -->|cap reached| R["429<br/>model never called"]
+  B --> M["Bedrock<br/>one model, set at deploy"]
+  M --> P{"Exact JSON shape?"}
+  P -->|no| N["unparseable"]
+  P -->|yes| V["verdict<br/>downgraded if checks flagged"]

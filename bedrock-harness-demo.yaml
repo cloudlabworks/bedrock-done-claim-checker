@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Done-claim checker: one Lambda, one Bedrock model, and a harness around it. A DynamoDB
+  counter caps calls per day before Bedrock is ever called, concurrency is pinned to 1,
+  and the function URL requires IAM auth (private) until it is deliberately opened.
+
+Parameters:
+  ModelId:
+    Type: String
+    Default: amazon.nova-micro-v1:0
+    Description: One Bedrock model id, chosen at deploy time. The function never routes between models.
+  DailyCap:
+    Type: Number
+    Default: 100
+    MinValue: 1
+    MaxValue: 1000
+    Description: Model calls allowed per UTC day; past this the function answers 429 without calling Bedrock.
+  UrlAuthType:
+    Type: String
+    Default: AWS_IAM
+    AllowedValues: [AWS_IAM, NONE]
+    Description: AWS_IAM keeps the URL private. NONE makes it public; only with the owner's approval.
+
+Conditions:
+  IsPublic: !Equals [!Ref UrlAuthType, NONE]
+
+Resources:
+  BudgetTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-checker
+      RetentionInDays: 7
+
+  FunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: checker
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: OneModelOnly
+                Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${ModelId}
+              - Sid: BudgetCounter
+                Effect: Allow
+                Action: dynamodb:UpdateItem
+                Resource: !GetAtt BudgetTable.Arn
+              - Sid: Logs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub ${LogGroup.Arn}:*
+
+  Checker:
+    Type: AWS::Lambda::Function
+    DependsOn: LogGroup
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-checker
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt FunctionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      ReservedConcurrentExecutions: 1
+      Environment:
+        Variables:
+          MODEL_ID: !Ref ModelId
+          DAILY_CAP: !Ref DailyCap
+          BUDGET_TABLE: !Ref BudgetTable
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {"statusCode": 503, "body": "code not uploaded yet; run deploy.sh"}
+
+  CheckerUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !GetAtt Checker.Arn
+      AuthType: !Ref UrlAuthType
+
+  PublicUrlPermission:
+    Type: AWS::Lambda::Permission
+    Condition: IsPublic
+    Properties:
+      FunctionName: !Ref Checker
+      Action: lambda:InvokeFunctionUrl
+      Principal: "*"
+      FunctionUrlAuthType: NONE
+
+Outputs:
+  FunctionName:
+    Value: !Ref Checker
+  FunctionUrl:
+    Value: !GetAtt CheckerUrl.FunctionUrl
+  UrlAuthType:
+    Value: !Ref UrlAuthType
+  BudgetTable:
+    Value: !Ref BudgetTable
