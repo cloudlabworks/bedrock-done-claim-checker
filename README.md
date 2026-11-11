@@ -38,6 +38,15 @@ flowchart LR
 ```
 Defaults: `us-east-1`, `amazon.nova-micro-v1:0`, 100 model calls per day.
 
+## Install as a library (pending the first release)
+> **Not on PyPI yet.** This becomes available after the first release (`v0.1.0`):
+
+```bash
+pip install bedrock-done-claim-checker
+```
+The package is the handler only: `from bedrock_done_claim_checker.handler import check, deterministic_checks`.
+Standard library only; `lambda_handler` also needs `boto3`. The scripts above are not in the package; run them from a clone.
+
 ## Status
 First live run 2026-10-27 (us-east-1, `amazon.nova-micro-v1:0`, private IAM-auth URL; run from CloudShell, no access keys):
 

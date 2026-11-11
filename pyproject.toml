@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bedrock-done-claim-checker"
+version = "0.1.0"
+description = "Check whether evidence supports a claim that some work is done: deterministic checks, a daily call cap and strict output parsing around one Amazon Bedrock model."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Alex Alvord", email = "325058966+cloudlabworks@users.noreply.github.com" }]
+keywords = ["aws", "bedrock", "lambda", "llm", "guardrails", "evidence", "verification", "budget"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://cloudlabworks.dev/oss/bedrock-done-claim-checker"
+Source = "https://github.com/cloudlabworks/bedrock-done-claim-checker"
+Issues = "https://github.com/cloudlabworks/bedrock-done-claim-checker/issues"
+
+# src/handler.py stays where deploy.sh and the tests expect it; the wheel ships it as
+# bedrock_done_claim_checker/handler.py.
+[tool.hatch.build.targets.wheel]
+only-include = ["src/__init__.py", "src/handler.py"]
+sources = { "src" = "bedrock_done_claim_checker" }
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/build"]
